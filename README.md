@@ -150,25 +150,6 @@ This will read the files from generated_candidates/ and create the final report:
 
 After this step, you can open validation_results.csv in Excel to see your AI-generated materials, ranked by stability!
 
-📂 Project Structure
-
-.
-├── 01_fetch_data.py         # Script to download training data from Materials Project
-├── 02_generate_candidates.py  # Script to GENERATE new materials (using pre-trained CDVAE)
-├── 03_validate_candidates.py  # Script to VALIDATE new materials (using pre-trained ALIGNN)
-├── index.html               # The "rock solid" frontend demo and 3D viewer
-├── INSTRUCTIONS.md          # Detailed setup guide for the backend
-├── README.md                # This file
-├── requirements.txt         # Python libraries for the backend
-│
-├── training_data/           # (Created by 01_fetch_data.py)
-│   └── mp-123_NaO2.cif
-│
-├── generated_candidates/    # (Created by 02_generate_candidates.py)
-│   └── gen_001_Na2SiO3.cif
-│
-└── validation_results.csv   # (Created by 03_validate_candidates.py) - THE FINAL RESULT
-
 
 🙏 Acknowledgements
 
