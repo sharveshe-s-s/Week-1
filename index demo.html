@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-M">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gen-Ion Discovery Engine</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load three.js (for 3D crystal viewing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        /* Custom styles for a "sci-fi" lab aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0e1a;
+            color: #e0e0e0;
+        }
+        
+        /* Custom scrollbar for the log */
+        #logs::-webkit-scrollbar {
+            width: 6px;
+        }
+        #logs::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        #logs::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        #logs::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Loading spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-left-color: #38bdf8;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* 3D Canvas container */
+        #canvas-container {
+            width: 100%;
+            height: 400px;
+            background: #111827;
+            border-radius: 8px;
+            cursor: move;
+        }
+
+        /* Custom Checkbox */
+        .element-checkbox {
+            display: none;
+        }
+        .element-label {
+            border: 1px solid #374151;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .element-label:hover {
+            border-color: #38bdf8;
+        }
+        .element-checkbox:checked + .element-label {
+            background-color: #38bdf8;
+            color: #111827;
+            border-color: #38bdf8;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start min-h-screen p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="w-full max-w-5xl mb-8 text-center">
+        <div class="flex items-center justify-center space-x-3">
+            <svg class="w-10 h-10 text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-2.25-1.313M21 7.5v2.25m0-2.25l-2.25 1.313M3 7.5l2.25-1.313M3 7.5v2.25m0-2.25l2.25 1.313M9 12l2.25-1.313M15 12l-2.25-1.313M12 10.313V7.5M12 16.5v-2.25m0 0l2.25-1.313M12 14.25L9.75 12.938M12 14.25v2.25m0 0l-2.25-1.313m-2.25 1.313l2.25 1.313m0 0L12 19.5l2.25-1.313m-2.25-1.313l2.25-1.313M4.5 9l-1.5 0.866m1.5 0L6 9.866m-1.5-.866L4.5 7.268m15 1.732l1.5 0.866m-1.5 0L18 9.866m1.5-.866L19.5 7.268M9 12l-3 1.732m3-1.732L6 12.866m3-1.732L9 10.134m6 1.866l3 1.732m-3-1.732L18 12.866m-3-1.732L15 10.134" />
+            </svg>
+            <h1 class="text-3xl font-bold text-white">Gen-Ion Discovery Engine</h1>
+        </div>
+        <p class="text-lg text-sky-300">AI-Powered Solid-State Electrolyte Discovery</p>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="w-full max-w-5xl p-6 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl">
+
+        <!-- STEP 1: Configuration Screen -->
+        <div id="config-screen">
+            <h2 class="text-2xl font-semibold text-white border-b border-gray-700 pb-2 mb-4">1. Configure New Generation Job</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="api-key" class="block text-sm font-medium text-gray-300 mb-1">Materials Project API Key</label>
+                    <input type="password" id="api-key" value="fAke_API_Key_For_Demo_123" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="Enter your MP API key...">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Select Target Elements (Base = Sodium)</label>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="checkbox" id="el-na" class="element-checkbox" checked disabled>
+                        <label for="el-na" class="element-label cursor-not-allowed opacity-70">Na (Sodium)</label>
+                        
+                        <input type="checkbox" id="el-si" class="element-checkbox" checked>
+                        <label for="el-si" class="element-label">Si (Silicon)</label>
+                        
+                        <input type="checkbox" id="el-o" class="element-checkbox" checked>
+                        <label for="el-o" class="element-label">O (Oxygen)</label>
+                        
+                        <input type="checkbox" id="el-p" class="element-checkbox">
+                        <label for="el-p" class="element-label">P (Phosphorus)</label>
+                        
+                        <input type="checkbox" id="el-s" class="element-checkbox">
+                        <label for="el-s" class="element-label">S (Sulfur)</label>
+                        
+                        <input type="checkbox" id="el-y" class="element-checkbox">
+                        <label for="el-y" class="element-label">Y (Yttrium)</label>
+
+                        <input type="checkbox" id="el-cl" class="element-checkbox">
+                        <label for="el-cl" class="element-label">Cl (Chlorine)</label>
+                    </div>
+                </div>
+
+                <button id="start-job-btn" class="w-full flex items-center justify-center px-6 py-3 bg-sky-600 text-white font-bold rounded-md hover:bg-sky-500 transition-all duration-200 shadow-lg">
+                    <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
+                    </svg>
+                    Start Generation Job
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Loading Screen (Simulated Backend) -->
+        <div id="loading-screen" class="hidden">
+            <h2 class="text-2xl font-semibold text-white mb-4">2. AI Generation in Progress...</h2>
+            
+            <div class="flex flex-col items-center">
+                <div class="spinner w-16 h-16 rounded-full mb-4"></div>
+                <p class="text-lg text-sky-300 mb-4">Simulating backend AI process. Please wait.</p>
+                
+                <div class="w-full bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <h3 class="font-mono text-sm text-gray-400 mb-2">[BACKEND LOG]</h3>
+                    <pre id="logs" class="w-full h-48 overflow-y-auto text-sm font-mono text-gray-300 whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Results Screen -->
+        <div id="results-screen" class="hidden">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
+                <h2 class="text-2xl font-semibold text-white">3. Job Complete: Top 5 Candidates</h2>
+                <button id="restart-job-btn" class="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-all">
+                    Start New Job
+                </button>
+            </div>
+
+            <div class="space-y-3" id="results-list">
+                <!-- Results will be dynamically inserted here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- 3D Viewer Modal -->
+    <div id="viewer-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+        <div class="bg-gray-800 w-full max-w-2xl rounded-lg shadow-2xl border border-gray-600">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 id="modal-title" class="text-xl font-semibold text-white">3D Structure Viewer</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-4">
+                <div id="canvas-container">
+                    <!-- three.js canvas will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- DOM Elements ---
+        const configScreen = document.getElementById('config-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const startJobBtn = document.getElementById('start-job-btn');
+        const restartJobBtn = document.getElementById('restart-job-btn');
+        const logs = document.getElementById('logs');
+        const resultsList = document.getElementById('results-list');
+        const modal = document.getElementById('viewer-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalTitle = document.getElementById('modal-title');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // --- Mock Data ---
+        // This is what your backend would really generate!
+        const mockResults = [
+            { id: 'gen-001', formula: 'Na2Si2O5', stability: -3.12, elements: ['Na', 'Si', 'O'] },
+            { id: 'gen-002', formula: 'Na4SiO4', stability: -3.05, elements: ['Na', 'Si', 'O'] },
+            { id: 'gen-003', formula: 'Na2SiO3', stability: -2.99, elements: ['Na', 'Si', 'O'] },
+            { id: 'gen-004', formula: 'Na2SiP2O7', stability: -2.87, elements: ['Na', 'Si', 'P', 'O'] },
+            { id: 'gen-005', formula: 'Na3PO4', stability: -2.81, elements: ['Na', 'P', 'O'] }
+        ];
+
+        // --- Simulation Logic ---
+        startJobBtn.addEventListener('click', () => {
+            configScreen.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+            runJobSimulation();
+        });
+        
+        restartJobBtn.addEventListener('click', () => {
+            resultsScreen.classList.add('hidden');
+            configScreen.classList.remove('hidden');
+            resultsList.innerHTML = ''; // Clear old results
+        });
+
+        function runJobSimulation() {
+            logs.textContent = ''; // Clear logs
+            const mockLogs = [
+                "[INFO] Job received. Spinning up GPU-V100 cluster...",
+                "[INFO] Authenticating with Materials Project API... OK.",
+                "[DATA] Querying for 12,451 base Na-compounds...",
+                "[DATA] Downloading and preprocessing training data... Done.",
+                "[AI] Starting CDVAE model training... (Epoch 1/50)",
+                "[AI] ...Epoch 10/50 - Loss: 0.812",
+                "[AI] ...Epoch 20/50 - Loss: 0.453",
+                "[AI] ...Epoch 30/50 - Loss: 0.219",
+                "[AI] ...Epoch 40/50 - Loss: 0.105",
+                "[AI] ...Epoch 50/50 - Loss: 0.088",
+                "[AI] Training complete. Model saved.",
+                "[GEN] Prompting trained model with user-selected elements...",
+                "[GEN] Generating 100 new hypothetical candidates...",
+                "[GEN] Generation complete. Candidates saved.",
+                "[VAL] Loading pre-trained ALIGNN property predictor...",
+                "[VAL] Running validation on 100 candidates...",
+                "[VAL] Calculating stability (Formation Energy) for candidate 1/100...",
+                "[VAL] ...Calculating stability for candidate 50/100...",
+                "[VAL] ...Calculating stability for candidate 100/100...",
+                "[VAL] Validation complete.",
+                "[INFO] Sorting results by stability score.",
+                "[INFO] Finalizing job... Done."
+            ];
+
+            let logIndex = 0;
+            function addLog() {
+                if (logIndex < mockLogs.length) {
+                    logs.textContent += mockLogs[logIndex] + '\n';
+                    logs.scrollTop = logs.scrollHeight; // Auto-scroll
+                    logIndex++;
+                    setTimeout(addLog, Math.random() * 400 + 100); // Simulate random time
+                } else {
+                    // Job finished
+                    setTimeout(showResults, 1000);
+                }
+            }
+            addLog();
+        }
+
+        function showResults() {
+            loadingScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            // Filter results based on selected elements (a real app would do this in the prompt)
+            const selectedElements = Array.from(document.querySelectorAll('.element-checkbox:checked')).map(cb => cb.id.split('-')[1].toUpperCase());
+            
+            // For this demo, we just show all mock results.
+            // A real app would filter mockResults based on selectedElements.
+            
+            mockResults.forEach((result, index) => {
+                const resultCard = document.createElement('div');
+                resultCard.className = 'bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center transition-all hover:border-sky-500';
+                resultCard.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <span class="text-2xl font-bold text-sky-400">#${index + 1}</span>
+                        <div>
+                            <h4 class="text-xl font-semibold text-white">${result.formula}</h4>
+                            <p class="text-sm text-gray-400">Predicted Stability: <span class="font-bold text-green-400">${result.stability} eV/atom</span></p>
+                        </div>
+                    </div>
+                    <button class="view-3d-btn px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-md hover:bg-sky-500">
+                        View 3D Structure
+                    </button>
+                `;
+                
+                resultCard.querySelector('.view-3d-btn').addEventListener('click', () => {
+                    openViewer(result.formula, result.elements);
+                });
+                
+                resultsList.appendChild(resultCard);
+            });
+        }
+        
+        // --- 3D Viewer Logic (three.js) ---
+        let scene, camera, renderer, cube, controls;
+        let isMouseDown = false;
+        let lastMouseX = 0, lastMouseY = 0;
+
+        function init3DViewer() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111827); // Match canvas bg
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+            camera.position.z = 10;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            canvasContainer.innerHTML = ''; // Clear any old canvas
+            canvasContainer.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            // Simple group to hold all parts of the crystal
+            cube = new THREE.Group();
+            scene.add(cube);
+
+            // Basic mouse controls
+            addMouseControls();
+
+            // Handle window resize
+            window.addEventListener('resize', onResize);
+            
+            animate();
+        }
+
+        function animate() {
+            if (!renderer) return; // Stop if disposed
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        function onResize() {
+            if (canvasContainer.clientWidth > 0 && canvasContainer.clientHeight > 0) {
+                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            }
+        }
+        
+        // Simple mouse drag controls
+        function addMouseControls() {
+            canvasContainer.addEventListener('mousedown', (e) => {
+                isMouseDown = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            });
+            canvasContainer.addEventListener('mouseup', () => isMouseDown = false);
+            canvasContainer.addEventListener('mouseleave', () => isMouseDown = false);
+            canvasContainer.addEventListener('mousemove', (e) => {
+                if (!isMouseDown) return;
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                
+                cube.rotation.y += deltaX * 0.01;
+                cube.rotation.x += deltaY * 0.01;
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            });
+            // Zoom
+            canvasContainer.addEventListener('wheel', (e) => {
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(3, Math.min(20, camera.position.z)); // Clamp zoom
+            });
+        }
+        
+        // Element colors for visualization
+        const elementColors = {
+            'NA': 0x4169E1, // Sodium (Blue)
+            'SI': 0x808080, // Silicon (Gray)
+            'O': 0xFF0000,  // Oxygen (Red)
+            'P': 0xFFA500,  // Phosphorus (Orange)
+            'S': 0xFFFF00,  // Sulfur (Yellow)
+            'Y': 0x94E0ED,  // Yttrium (Light Blue)
+            'CL': 0x00FF00  // Chlorine (Green)
+        };
+
+        // This is the "WOW" feature.
+        // It's a MOCK visualization, not a real .cif parser.
+        // It creates a simple cubic lattice based on the elements.
+        function drawCrystal(formula, elements) {
+            // Clear previous crystal
+            while(cube.children.length > 0){ 
+                cube.remove(cube.children[0]); 
+            }
+            
+            const atomGeo = new THREE.SphereGeometry(0.5, 32, 32);
+            const bondGeo = new THREE.CylinderGeometry(0.1, 0.1, 3, 16);
+            
+            const atomMaterials = {};
+            elements.forEach(el => {
+                atomMaterials[el] = new THREE.MeshPhongMaterial({ color: elementColors[el.toUpperCase()] || 0xffffff });
+            });
+            
+            const bondMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+            
+            // Create a simple 3x3x3 lattice
+            const size = 3;
+            const spacing = 3;
+            
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    for (let z = 0; z < size; z++) {
+                        // Get a random element from the formula
+                        const el = elements[Math.floor(Math.random() * elements.length)];
+                        
+                        const atom = new THREE.Mesh(atomGeo, atomMaterials[el]);
+                        atom.position.set(
+                            (x - 1) * spacing,
+                            (y - 1) * spacing,
+                            (z - 1) * spacing
+                        );
+                        cube.add(atom);
+                        
+                        // Add bonds
+                        if (x > 0) {
+                            const bond = new THREE.Mesh(bondGeo, bondMaterial);
+                            bond.position.set(atom.position.x - spacing / 2, atom.position.y, atom.position.z);
+                            bond.rotation.z = Math.PI / 2;
+                            cube.add(bond);
+                        }
+                        if (y > 0) {
+                            const bond = new THREE.Mesh(bondGeo, bondMaterial);
+                            bond.position.set(atom.position.x, atom.position.y - spacing / 2, atom.position.z);
+                            cube.add(bond);
+                        }
+                        if (z > 0) {
+                            const bond = new THREE.Mesh(bondGeo, bondMaterial);
+                            bond.position.set(atom.position.x, atom.position.y, atom.position.z - spacing / 2);
+                            bond.rotation.x = Math.PI / 2;
+							cube.add(bond);
+                        }
+                    }
+                }
+            }
+            // Reset rotation
+            cube.rotation.set(0, 0, 0);
+        }
+
+        // Modal open/close logic
+        function openViewer(formula, elements) {
+            modalTitle.textContent = `3D Structure Viewer - ${formula}`;
+            modal.classList.remove('hidden');
+            
+            // Initialize 3D scene *after* modal is visible
+            // Use setTimeout to ensure container has dimensions
+            setTimeout(() => {
+                if (!renderer) { // Only init once
+                    init3DViewer();
+                }
+                drawCrystal(formula, elements);
+                onResize(); // Fit to container
+            }, 50);
+        }
+
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+    </script>
+</body>
+</html>
